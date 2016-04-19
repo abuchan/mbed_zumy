@@ -99,7 +99,7 @@ int main() {
         
         case PKT_TYPE_COMMAND:
           command = (command_data_t*)recv_pkt->packet.data_crc;
-          control.set_setpoints(command->right, command->left);
+          control.set_setpoints(command->left, command->right);
           break;
 
         case PKT_TYPE_TIME:
