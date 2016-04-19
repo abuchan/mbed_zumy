@@ -1,3 +1,9 @@
 *.swp
+
 *.o
 *.d
+
+*.bin
+*.elf
+*.map
+*.hex
