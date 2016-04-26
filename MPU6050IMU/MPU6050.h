@@ -197,9 +197,9 @@ class MPU6050 {
     // I2C interface
     I2C i2c_;
     
-    void writeByte(uint8_t address, uint8_t subAddress, uint8_t data);
+    bool writeByte(uint8_t address, uint8_t subAddress, uint8_t data);
     char readByte(uint8_t address, uint8_t subAddress);
-    void readBytes(
+    bool readBytes(
       uint8_t address, uint8_t subAddress, uint8_t count, uint8_t * dest);
     
     int gyro_scale_;

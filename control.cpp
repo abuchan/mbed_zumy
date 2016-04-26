@@ -1,12 +1,16 @@
 #include "control.h"
 
 Control::Control(
-  PinName left_mot_0_pin, PinName left_mot_1_pin, 
-  PinName right_mot_0_pin, PinName right_mot_1_pin, 
-  Sensors *sensors, uint32_t tick_per_rev,
-  float kP, float kI, float kD, float period, float velocity_max, float pid_dead_band) :
-  sensors_(sensors),
-  control_timer_(&Control::control_helper,osTimerPeriodic,this), pid_dead_band_(pid_dead_band) {
+    PinName left_mot_0_pin, PinName left_mot_1_pin, 
+    PinName right_mot_0_pin, PinName right_mot_1_pin, 
+    Sensors *sensors, uint32_t tick_per_rev,
+    float kP, float kI, float kD, float period, float velocity_max,
+    float pid_dead_band
+  ) :
+    sensors_(sensors),
+    control_timer_(&Control::control_helper,osTimerPeriodic,this),
+    pid_dead_band_(pid_dead_band)
+  {
 
   motors_[MOTOR_LEFT][0] = new PwmOut(left_mot_0_pin);
   motors_[MOTOR_LEFT][1] = new PwmOut(left_mot_1_pin);

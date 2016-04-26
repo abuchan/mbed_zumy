@@ -64,7 +64,7 @@ int main() {
   packet_union_t* recv_pkt = NULL;
   packet_union_t* send_pkt = NULL;
   command_data_t* command;
-  
+
   send_pkt = parser.get_send_packet();
   if (send_pkt != NULL) {
     fill_time_packet(&(send_pkt->packet), system_timer.read_us());
@@ -82,13 +82,17 @@ int main() {
   Control control(
     L_MOT_0_PIN, L_MOT_1_PIN, R_MOT_0_PIN, R_MOT_1_PIN,
     &sensors, TICK_PER_REV,
-    PID_KP, PID_KI, PID_KD, PID_PERIOD, PID_IN_MAX, PID_DEAD_BAND);
+    PID_KP, PID_KI, PID_KD, PID_PERIOD, PID_IN_MAX, PID_DEAD_BAND
+  );
  
   led4 = 1;
+
+  packet_union_t* sensor_pkt = parser.get_send_packet();
 
   while(1) {
      
     recv_pkt = parser.get_received_packet();
+
     if (recv_pkt != NULL) {
       
       switch (recv_pkt->packet.header.type) {
@@ -111,11 +115,14 @@ int main() {
           break;
         
         case PKT_TYPE_READ:
-          send_pkt = parser.get_send_packet();
-          if (send_pkt != NULL) {
-            sensors.fill_sensor_packet(&(send_pkt->packet));
-            control.fill_sensor_packet(&(send_pkt->packet));
-            parser.send_packet(send_pkt);
+          if (sensor_pkt != NULL) {
+            if(sensors.fill_sensor_packet(&(sensor_pkt->packet))) {
+              control.fill_sensor_packet(&(sensor_pkt->packet));
+              parser.send_packet(sensor_pkt);
+              sensor_pkt = parser.get_send_packet();
+            }
+          } else {
+            sensor_pkt = parser.get_send_packet();
           }
           break;
       }
@@ -130,7 +137,7 @@ int main() {
       led1 = !led1;
       led4 = !led4;
     }
-
+  
     Thread::yield();
   }
 }

@@ -75,11 +75,11 @@ MPU6050::MPU6050(
   }
 }
 
-void MPU6050::writeByte(uint8_t address, uint8_t subAddress, uint8_t data) {
+bool MPU6050::writeByte(uint8_t address, uint8_t subAddress, uint8_t data) {
   char data_write[2];
   data_write[0] = subAddress;
   data_write[1] = data;
-  i2c_.write(address, data_write, 2, 0);
+  return i2c_.write(address, data_write, 2, 0) == 0; 
 }
 
 char MPU6050::readByte(uint8_t address, uint8_t subAddress) {
@@ -91,17 +91,18 @@ char MPU6050::readByte(uint8_t address, uint8_t subAddress) {
   return data[0]; 
 }
 
-void MPU6050::readBytes(
+bool MPU6050::readBytes(
   uint8_t address, uint8_t subAddress, uint8_t count, uint8_t * dest) {     
 
   char data[14];
   char data_write[1];
   data_write[0] = subAddress;
   i2c_.write(address, data_write, 1, 1); // no stop
-  i2c_.read(address, data, count, 0); 
+  bool success = (i2c_.read(address, data, count, 0) == 0);
   for(int ii = 0; ii < count; ii++) {
    dest[ii] = data[ii];
   }
+  return success;
 } 
 
 void MPU6050::readAccelData(int16_t * destination) {
@@ -130,17 +131,16 @@ void MPU6050::readGyroData(int16_t * destination) {
 
 // Gyro biases are written to IMU, so don't need to subtract them
 bool MPU6050::readCalibAccelGyroData(float* accel_out, float* gyro_out) {
-  int16_t accel[3];
-  int16_t gyro[3];
-  if (imu_ready_ && (readByte(MPU6050_ADDRESS, INT_STATUS) & 0x01)) {
-    readAccelData(accel);
-    readGyroData(gyro);
-    accel_out[0] = ((float)accel[0]) * aRes_ - accelBias_[0];
-    accel_out[1] = ((float)accel[1]) * aRes_ - accelBias_[1];
-    accel_out[2] = ((float)accel[2]) * aRes_ - accelBias_[2];
-    gyro_out[0] = ((float)gyro[0]) * gRes_; // - gyroBias_[0];
-    gyro_out[1] = ((float)gyro[1]) * gRes_; // - gyroBias_[1];
-    gyro_out[2] = ((float)gyro[2]) * gRes_; // - gyroBias_[2];
+  uint8_t raw[16];
+  int16_t temp;
+  int i;
+  if (imu_ready_ && readBytes(MPU6050_ADDRESS, INT_STATUS, 15, raw) && (raw[0] & 0x01)) {
+    for (i=0; i<3; i++) {
+      temp = (int16_t)(((int16_t)raw[2*i+1]<<8) | raw[2*i+2]);
+      accel_out[i] = (float)temp * aRes_ - accelBias_[i];
+      temp = (int16_t)(((int16_t)raw[2*i+9]<<8) | raw[2*i+10]);
+      gyro_out[i] = (float)temp * gRes_;
+    }
     return true;
   } else {
     return false;

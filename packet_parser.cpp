@@ -71,8 +71,9 @@ void PacketParser::send_worker(void) {
       uint8_t crc_value = calculate_crc8(out_pkt_->raw, out_pkt_->packet.header.length-1);
       out_pkt_->raw[out_pkt_->packet.header.length-1] = crc_value;
       pc_.dmaSend(out_pkt_->raw, out_pkt_->packet.header.length);
-      
+      tx_led_ = 0;
       send_thread_.signal_wait(DMA_COMPLETE_FLAG);
+      tx_led_ = 1;
       send_thread_.signal_clr(DMA_COMPLETE_FLAG);
       out_box_.free(out_pkt_);
       out_pkt_ = NULL;
