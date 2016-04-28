@@ -16,7 +16,7 @@
 #define PID_OUT_MIN (-1.0f)
 #define PID_OUT_MAX 1.0f
 
-#define TICK_PER_REV 600
+#define TICK_PER_REV 1200
 
 #define PID_DEAD_BAND 0.03f
 

@@ -9,8 +9,8 @@ Sensors::Sensors(
 
   system_timer_(system_timer),
   voltage_pin_(voltage_pin),
-  left_qei_(l_enc_a_pin, l_enc_b_pin, NC, tick_per_rev),
-  right_qei_(r_enc_a_pin, r_enc_b_pin, NC, tick_per_rev),
+  left_qei_(l_enc_a_pin, l_enc_b_pin, NC, tick_per_rev, QEI::X4_ENCODING),
+  right_qei_(r_enc_a_pin, r_enc_b_pin, NC, tick_per_rev, QEI::X4_ENCODING),
   mpu6050_(imu_sda_pin, imu_scl_pin) {}
 
 float Sensors::get_voltage(void) {

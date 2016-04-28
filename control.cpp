@@ -53,8 +53,6 @@ void Control::fill_sensor_packet(packet_t* pkt) {
   sensor_data_t* sensor_data = (sensor_data_t*)pkt->data_crc;
   sensor_data->velocity[MOTOR_LEFT] = velocities_[MOTOR_LEFT];
   sensor_data->velocity[MOTOR_RIGHT] = velocities_[MOTOR_RIGHT];
-  //sensor_data->velocity[MOTOR_LEFT] = last_positions_[MOTOR_LEFT];
-  //sensor_data->velocity[MOTOR_RIGHT] = last_positions_[MOTOR_RIGHT];
 }
 
 void Control::set_motor_pwm(int motor, float value) {
