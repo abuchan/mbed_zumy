@@ -21,6 +21,7 @@ class Sensors {
     
     float get_voltage(void);
     void get_encoders(int32_t (&encoders)[2]);
+    void get_angles(float* angles);
     bool get_imu(sensor_data_t* sensor_data);
 
     bool fill_sensor_packet(packet_t* packet);

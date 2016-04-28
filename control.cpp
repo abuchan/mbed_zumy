@@ -53,6 +53,8 @@ void Control::fill_sensor_packet(packet_t* pkt) {
   sensor_data_t* sensor_data = (sensor_data_t*)pkt->data_crc;
   sensor_data->velocity[MOTOR_LEFT] = velocities_[MOTOR_LEFT];
   sensor_data->velocity[MOTOR_RIGHT] = velocities_[MOTOR_RIGHT];
+  //sensor_data->velocity[MOTOR_LEFT] = last_positions_[MOTOR_LEFT];
+  //sensor_data->velocity[MOTOR_RIGHT] = last_positions_[MOTOR_RIGHT];
 }
 
 void Control::set_motor_pwm(int motor, float value) {
@@ -79,12 +81,12 @@ void Control::control_helper(const void* p) {
 }
 
 void Control::control_update(void) {
-  int32_t positions[2];
+  float positions[2];
   
-  sensors_->get_encoders(positions);
+  sensors_->get_angles(positions);
 
   for (uint32_t i=0; i<2; i++) {
-    velocities_[i] = tick_to_angular_velocity_ * (float)(positions[i] - last_positions_[i]);
+    velocities_[i] = tick_to_angular_velocity_ * (positions[i] - last_positions_[i]);
     last_positions_[i] = positions[i];
     pids_[i]->setProcessValue(velocities_[i]);
     pwms_[i] = pids_[i]->compute();

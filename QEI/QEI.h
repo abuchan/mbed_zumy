@@ -208,6 +208,8 @@ public:
      */
     int getRevolutions(void);
 
+    float getPulseFraction(void);
+
 private:
 
     /**
@@ -239,6 +241,9 @@ private:
     volatile int pulses_;
     volatile int revolutions_;
 
+    Timer pulse_timer_;
+    volatile int last_pulse_time_;
+    volatile int last_pulse_direction_;
 };
 
 #endif /* QEI_H */

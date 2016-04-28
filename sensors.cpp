@@ -22,6 +22,11 @@ void Sensors::get_encoders(int32_t (&encoders)[2]) {
   encoders[1] = -right_qei_.getPulses();
 }
 
+void Sensors::get_angles(float * angles) {
+  angles[0] = left_qei_.getPulseFraction();
+  angles[1] = -right_qei_.getPulseFraction();
+}
+
 bool Sensors::get_imu(sensor_data_t* sensor_data) {
   sensor_data->time = system_timer_->read_us();
   return mpu6050_.readCalibAccelGyroData(sensor_data->accel, sensor_data->gyro);

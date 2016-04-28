@@ -50,7 +50,7 @@ class Control {
     float tick_to_angular_velocity_;
     float pid_dead_band_;
 
-    int32_t last_positions_[2];
+    float last_positions_[2];
     float velocities_[2];
     float pwms_[2];
 };

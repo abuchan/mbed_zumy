@@ -164,6 +164,8 @@ QEI::QEI(PinName channelA,
         index_.rise(this, &QEI::index);
     }
 
+    pulse_timer_.start();
+
 }
 
 void QEI::reset(void) {
@@ -189,6 +191,18 @@ int QEI::getRevolutions(void) {
 
     return revolutions_;
 
+}
+
+float QEI::getPulseFraction(void) {
+  __disable_irq();
+  int pulses = pulses_;
+  int period = last_pulse_time_;
+  int direction = last_pulse_direction_;
+  last_pulse_direction_ = 0; // make sure we only apply fractional portion if there was an update
+  int time = pulse_timer_.read_us();
+  __enable_irq();
+
+  return ((float)pulses) + (direction * ((float)time)/((float)period));
 }
 
 // +-------------+
@@ -250,14 +264,14 @@ void QEI::encode(void) {
         if ((prevState_ == 0x3 && currState_ == 0x0) ||
                 (prevState_ == 0x0 && currState_ == 0x3)) {
 
-            pulses_++;
+            change = 1;
 
         }
         //10->01->10->01 is clockwise rotation or "backward".
         else if ((prevState_ == 0x2 && currState_ == 0x1) ||
                  (prevState_ == 0x1 && currState_ == 0x2)) {
 
-            pulses_--;
+            change = -1;
 
         }
 
@@ -273,13 +287,18 @@ void QEI::encode(void) {
                 change = -1;
             }
 
-            pulses_ -= change;
+            change = -change;
         }
 
     }
+    
+    pulses_ += change;
 
     prevState_ = currState_;
-
+    
+    last_pulse_direction_ = change;
+    last_pulse_time_ = pulse_timer_.read_us();
+    pulse_timer_.reset();
 }
 
 void QEI::index(void) {
