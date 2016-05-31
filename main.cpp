@@ -1,143 +1,89 @@
 #include "mbed.h"
-
-#include "protocol.h"
-#include "packet_parser.h"
-#include "sensors.h"
-#include "control.h"
-
-#define PID_KP      1.0f
-#define PID_KI      0.1f
-#define PID_KD      0.0f
-
-#define PID_PERIOD  0.01f
-
-#define PID_IN_MIN  (-50.0f)
-#define PID_IN_MAX  50.0f
-#define PID_OUT_MIN (-1.0f)
-#define PID_OUT_MAX 1.0f
-
-#define TICK_PER_REV 1200
-
-#define PID_DEAD_BAND 0.03f
-
-#define SERIAL_BAUDRATE 230400
-
-#define VOLTAGE_PIN   p15
-
-#define L_ENC_A_PIN   p29
-#define L_ENC_B_PIN   p30
-#define R_ENC_A_PIN   p11
-#define R_ENC_B_PIN   p12
-
-#define IMU_SDA_PIN   p9
-#define IMU_SCL_PIN   p10
-
-#define L_MOT_0_PIN   p21
-#define L_MOT_1_PIN   p22
-#define R_MOT_0_PIN   p23
-#define R_MOT_1_PIN   p24
-
-void fill_time_packet(packet_t* pkt, uint32_t time) {
-  pkt->header.type = PKT_TYPE_TIME;
-  pkt->header.length = sizeof(header_t) + sizeof(time_data_t) + 1;
-  time_data_t* time_data = (time_data_t*)pkt->data_crc;
-  time_data->time = time;
-}
-
-extern "C" void mbed_reset();
-
-int main() {
-  
-  DigitalOut led1(LED1);
-  DigitalOut led4(LED4);
-  
-  led1 = 1;
-
-  Timer system_timer;
-
-  system_timer.start();
-  uint32_t last_time = system_timer.read_ms();
-  uint32_t current_time = last_time;
-  
-  PacketParser parser(SERIAL_BAUDRATE, USBTX, USBRX, LED2, LED3);
-
-  packet_union_t* recv_pkt = NULL;
-  packet_union_t* send_pkt = NULL;
-  command_data_t* command;
-
-  send_pkt = parser.get_send_packet();
-  if (send_pkt != NULL) {
-    fill_time_packet(&(send_pkt->packet), system_timer.read_us());
-    parser.send_packet(send_pkt);
-  }
-  
-  Sensors sensors(
-    &system_timer,
-    VOLTAGE_PIN,
-    L_ENC_A_PIN, L_ENC_B_PIN,
-    R_ENC_A_PIN, R_ENC_B_PIN, TICK_PER_REV,
-    IMU_SDA_PIN, IMU_SCL_PIN
-  );
-  
-  Control control(
-    L_MOT_0_PIN, L_MOT_1_PIN, R_MOT_0_PIN, R_MOT_1_PIN,
-    &sensors, TICK_PER_REV,
-    PID_KP, PID_KI, PID_KD, PID_PERIOD, PID_IN_MAX, PID_DEAD_BAND
-  );
+#include "SerialRPCInterface.h"
+#include "MPU6050.h"
+#include "QEI.h"
  
-  led4 = 1;
-
-  packet_union_t* sensor_pkt = parser.get_send_packet();
-
-  while(1) {
-     
-    recv_pkt = parser.get_received_packet();
-
-    if (recv_pkt != NULL) {
-      
-      switch (recv_pkt->packet.header.type) {
-        
-        case PKT_TYPE_RESET:
-          mbed_reset();
-          break;
-        
-        case PKT_TYPE_COMMAND:
-          command = (command_data_t*)recv_pkt->packet.data_crc;
-          control.set_setpoints(command->left, command->right);
-          break;
-
-        case PKT_TYPE_TIME:
-          send_pkt = parser.get_send_packet();
-          if (send_pkt != NULL) {
-            fill_time_packet(&(send_pkt->packet), system_timer.read_us());
-            parser.send_packet(send_pkt);
-          }
-          break;
-        
-        case PKT_TYPE_READ:
-          if (sensor_pkt != NULL) {
-            if(sensors.fill_sensor_packet(&(sensor_pkt->packet))) {
-              control.fill_sensor_packet(&(sensor_pkt->packet));
-              parser.send_packet(sensor_pkt);
-              sensor_pkt = parser.get_send_packet();
-            }
-          } else {
-            sensor_pkt = parser.get_send_packet();
-          }
-          break;
-      }
-
-      parser.free_received_packet(recv_pkt);
+SerialRPCInterface SerialRPC(USBTX, USBRX, 115200);
+ 
+float accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z;
+int r_enc, l_enc;
+ 
+RPCVariable<float> rpc_accel_x(&accel_x, "accel_x");
+RPCVariable<float> rpc_accel_y(&accel_y, "accel_y");
+RPCVariable<float> rpc_accel_z(&accel_z, "accel_z");
+RPCVariable<float> rpc_gryo_x(&gyro_x, "gyro_x");
+RPCVariable<float> rpc_gryo_y(&gyro_y, "gyro_y");
+RPCVariable<float> rpc_gryo_z(&gyro_z, "gyro_z");
+RPCVariable<int>   rpc_r_enc(&r_enc, "r_enc");
+RPCVariable<int>   rpc_l_enc(&l_enc, "l_enc");
+QEI l_wheel (p29, p30, NC, 624);
+QEI r_wheel (p11, p12, NC, 624);
+ 
+MPU6050 mpu6050;
+ 
+DigitalOut init_done(LED1);
+DigitalOut imu_good(LED2);
+DigitalOut main_loop(LED3);
+ 
+int main() {
+    init_done = 0;
+    imu_good = 0;
+    main_loop = 0;
+    
+    //Set up I2C
+    i2c.frequency(400000);  // use fast (400 kHz) I2C
+    
+    volatile bool imu_ready = false;
+    
+    wait_ms(100);
+    
+    uint8_t whoami = mpu6050.readByte(MPU6050_ADDRESS, WHO_AM_I_MPU6050);
+    
+    if (whoami == 0x68) // WHO_AM_I should always be 0x68
+    {
+        mpu6050.MPU6050SelfTest(SelfTest);
+        if(SelfTest[0] < 1.0f && SelfTest[1] < 1.0f && SelfTest[2] < 1.0f && SelfTest[3] < 1.0f && SelfTest[4] < 1.0f && SelfTest[5] < 1.0f) {
+            mpu6050.resetMPU6050(); // Reset registers to default in preparation for device calibration
+            mpu6050.calibrateMPU6050(gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers  
+            mpu6050.initMPU6050();
+            mpu6050.getAres();
+            mpu6050.getGres();
+            imu_ready = true;
+            imu_good = 1;
+        }
     }
     
-    current_time = system_timer.read_ms();
-
-    if (current_time - last_time > 500) {
-      last_time = current_time;
-      led1 = !led1;
-      led4 = !led4;
+    init_done = 1;
+    uint8_t loop_count = 10;
+    while(1) {
+        wait_ms(10);
+        
+        // Handle the encoders
+        r_enc=r_wheel.getPulses();
+        l_enc=l_wheel.getPulses();
+        //pc.printf("Pulses are: %i, %i\r\n", l_enc,r_enc);
+        
+        if (!(--loop_count)) {
+            loop_count = 10;
+            main_loop = !main_loop;
+        }
+        
+        if (imu_ready) {
+            
+            if(mpu6050.readByte(MPU6050_ADDRESS, INT_STATUS) & 0x01) {  // check if data ready interrupt
+                mpu6050.readAccelData(accelCount);  // Read the x/y/z adc values
+                mpu6050.readGyroData(gyroCount);  // Read the x/y/z adc values
+ 
+                // Now we'll calculate the accleration value into actual g's
+                accel_x = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
+                accel_y = (float)accelCount[1]*aRes - accelBias[1];   
+                accel_z = (float)accelCount[2]*aRes - accelBias[2];  
+               
+                // Calculate the gyro value into actual degrees per second
+                gyro_x = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
+                gyro_y = (float)gyroCount[1]*gRes - gyroBias[1];  
+                gyro_z = (float)gyroCount[2]*gRes - gyroBias[2];
+            }
+        }
     }
-  
-    Thread::yield();
-  }
 }
