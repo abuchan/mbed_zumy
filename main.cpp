@@ -4,6 +4,7 @@
 #include "packet_parser.h"
 #include "sensors.h"
 #include "control.h"
+#include "markers.h"
 
 #define PID_KP      1.0f
 #define PID_KI      0.1f
@@ -36,6 +37,8 @@
 #define L_MOT_1_PIN   p22
 #define R_MOT_0_PIN   p23
 #define R_MOT_1_PIN   p24
+
+#define MARKER_PIN    p5
 
 void fill_time_packet(packet_t* pkt, uint32_t time) {
   pkt->header.type = PKT_TYPE_TIME;
@@ -84,7 +87,9 @@ int main() {
     &sensors, TICK_PER_REV,
     PID_KP, PID_KI, PID_KD, PID_PERIOD, PID_IN_MAX, PID_DEAD_BAND
   );
- 
+  
+  Markers markers(MARKER_PIN);
+
   led4 = 1;
 
   packet_union_t* sensor_pkt = parser.get_send_packet();
@@ -124,6 +129,10 @@ int main() {
           } else {
             sensor_pkt = parser.get_send_packet();
           }
+          break;
+
+        case PKT_TYPE_MARKER:
+          markers.update((marker_data_t*)recv_pkt->packet.data_crc);
           break;
       }
 

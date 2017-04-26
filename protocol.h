@@ -11,11 +11,14 @@
 #define PKT_TYPE_RESET    'R'
 #define PKT_TYPE_TIME     'T'
 #define PKT_TYPE_PID      'P'
+#define PKT_TYPE_MARKER   'M'
 
 /**
  * Defines the total maximum size of a packet, including header
  */
 #define MAX_PACKET_LENGTH 256
+
+#define MARKER_N_PIXEL    6
 
 /**
  * Packet structure definitions
@@ -64,5 +67,9 @@ typedef struct pid_data_t {
   float vel[2];
   float pwm[2];
 } pid_data_t;
+
+typedef struct marker_data_t {
+  uint32_t colors[MARKER_N_PIXEL];
+} marker_data_t;
 
 #endif
