@@ -12,6 +12,7 @@
 #define PKT_TYPE_TIME     'T'
 #define PKT_TYPE_PID      'P'
 #define PKT_TYPE_MARKER   'M'
+#define PKT_TYPE_LASER    'L'
 
 /**
  * Defines the total maximum size of a packet, including header
@@ -71,5 +72,10 @@ typedef struct pid_data_t {
 typedef struct marker_data_t {
   uint32_t colors[MARKER_N_PIXEL];
 } marker_data_t;
+
+typedef struct galvo_laser_t {
+  float laser_cmd;
+  int16_t galvo_cmd[2];
+} galvo_laser_t;
 
 #endif

@@ -1,5 +1,7 @@
 #include "sensors.h"
 
+//#define DUMMY_IMU
+
 Sensors::Sensors(
   Timer *system_timer,
   PinName voltage_pin,
@@ -29,7 +31,17 @@ void Sensors::get_angles(float * angles) {
 
 bool Sensors::get_imu(sensor_data_t* sensor_data) {
   sensor_data->time = system_timer_->read_us();
-  return mpu6050_.readCalibAccelGyroData(sensor_data->accel, sensor_data->gyro);
+  #ifdef DUMMY_IMU
+    sensor_data->accel[0] = 0;
+    sensor_data->accel[1] = 0;
+    sensor_data->accel[2] = 0;
+    sensor_data->gyro[0] = 0;
+    sensor_data->gyro[1] = 0;
+    sensor_data->gyro[2] = 0;
+    return true;
+  #else
+    return mpu6050_.readCalibAccelGyroData(sensor_data->accel, sensor_data->gyro);
+  #endif
 }
 
 bool Sensors::fill_sensor_packet(packet_t* pkt) {

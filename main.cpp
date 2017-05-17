@@ -40,6 +40,13 @@
 
 #define MARKER_PIN    p5
 
+#define GALVO_SEL_PIN   p19
+#define GALVO_DIR_PIN   p18
+#define GALVO_PULSE_PIN p17
+#define GALVO_SENSE_PIN p16
+
+#define LASER_PWM_PIN   p25
+
 void fill_time_packet(packet_t* pkt, uint32_t time) {
   pkt->header.type = PKT_TYPE_TIME;
   pkt->header.length = sizeof(header_t) + sizeof(time_data_t) + 1;
@@ -54,7 +61,8 @@ int main() {
   DigitalOut led1(LED1);
   DigitalOut led4(LED4);
   
-  led1 = 1;
+  led1 = 0;
+  led4 = 0;
 
   Timer system_timer;
 
@@ -85,12 +93,15 @@ int main() {
   Control control(
     L_MOT_0_PIN, L_MOT_1_PIN, R_MOT_0_PIN, R_MOT_1_PIN,
     &sensors, TICK_PER_REV,
-    PID_KP, PID_KI, PID_KD, PID_PERIOD, PID_IN_MAX, PID_DEAD_BAND
+    PID_KP, PID_KI, PID_KD, PID_PERIOD, PID_IN_MAX,
+    PID_DEAD_BAND,
+    GALVO_SEL_PIN, GALVO_DIR_PIN, GALVO_PULSE_PIN, GALVO_SENSE_PIN,
+    LASER_PWM_PIN
   );
   
   Markers markers(MARKER_PIN);
 
-  led4 = 1;
+  led1 = 1;
 
   packet_union_t* sensor_pkt = parser.get_send_packet();
 
@@ -112,6 +123,7 @@ int main() {
           break;
 
         case PKT_TYPE_TIME:
+          led4 = ((recv_pkt->packet.header.flags) & 1);
           send_pkt = parser.get_send_packet();
           if (send_pkt != NULL) {
             fill_time_packet(&(send_pkt->packet), system_timer.read_us());
@@ -134,6 +146,13 @@ int main() {
         case PKT_TYPE_MARKER:
           markers.update((marker_data_t*)recv_pkt->packet.data_crc);
           break;
+        
+        case PKT_TYPE_LASER:
+          led4 = !led4;
+          galvo_laser_t* galvo_laser = (galvo_laser_t*)recv_pkt->packet.data_crc;
+          control.set_laser(galvo_laser->laser_cmd);
+          control.set_galvo(galvo_laser->galvo_cmd[0], galvo_laser->galvo_cmd[1]);
+          break;
       }
 
       parser.free_received_packet(recv_pkt);
@@ -144,7 +163,6 @@ int main() {
     if (current_time - last_time > 500) {
       last_time = current_time;
       led1 = !led1;
-      led4 = !led4;
     }
   
     Thread::yield();
