@@ -42,10 +42,12 @@
 
 #define GALVO_SEL_PIN   p19
 #define GALVO_DIR_PIN   p18
-#define GALVO_PULSE_PIN p17
-#define GALVO_SENSE_PIN p16
+#define GALVO_PULSE_PIN p20
+#define GALVO_SENSE_PIN p7
 
 #define LASER_PWM_PIN   p25
+
+#define CURRENT_PIN   p16
 
 void fill_time_packet(packet_t* pkt, uint32_t time) {
   pkt->header.type = PKT_TYPE_TIME;
@@ -87,7 +89,8 @@ int main() {
     VOLTAGE_PIN,
     L_ENC_A_PIN, L_ENC_B_PIN,
     R_ENC_A_PIN, R_ENC_B_PIN, TICK_PER_REV,
-    IMU_SDA_PIN, IMU_SCL_PIN
+    IMU_SDA_PIN, IMU_SCL_PIN,
+    CURRENT_PIN
   );
   
   Control control(

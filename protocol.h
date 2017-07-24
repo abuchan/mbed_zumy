@@ -54,6 +54,7 @@ typedef struct sensor_data_t {
   int32_t encoder[2];
   float velocity[2];
   float voltage;
+  float current;
 } sensor_data_t;
 
 typedef struct read_data_t {
